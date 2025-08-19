@@ -1,0 +1,74 @@
+package nathttp
+
+import (
+	"context"
+	"errors"
+	"github.com/r27153733/natlisten/natnet"
+	"net"
+	"net/http"
+	"syscall"
+)
+
+func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int)) error {
+	addr := s.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	lnConn, ok := ln.(syscall.Conn)
+	if !ok {
+		return errors.New("could not convert to syscall.Conn")
+	}
+	err = natnet.SetListenerReuse(lnConn)
+	if err != nil {
+		return err
+	}
+	localAddr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		return errors.New("could not convert to net.TCPAddr")
+	}
+	err = natnet.IPV4PubNat(context.Background(), localAddr, fn)
+	if err != nil {
+		return err
+	}
+
+	return s.Serve(ln)
+}
+
+func ReuseListenAndServeTLSIPV4PubNat(s *http.Server, certFile, keyFile string, fn func(ip net.IP, port int)) error {
+	addr := s.Addr
+	if addr == "" {
+		addr = ":https"
+	}
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	defer ln.Close()
+
+	lnConn, ok := ln.(syscall.Conn)
+	if !ok {
+		return errors.New("could not convert to syscall.Conn")
+	}
+	err = natnet.SetListenerReuse(lnConn)
+	if err != nil {
+		return err
+	}
+
+	localAddr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		return errors.New("could not convert to net.TCPAddr")
+	}
+	err = natnet.IPV4PubNat(context.Background(), localAddr, fn)
+	if err != nil {
+		return err
+	}
+
+	return s.ServeTLS(ln, certFile, keyFile)
+}
