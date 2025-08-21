@@ -49,26 +49,36 @@ func GetCli(cfg Config) DDNSPortCli {
 	}
 }
 
-func (c *DDNSPortCli) UpdateDNSPort(ip net.IP, port int) {
+func (c *DDNSPortCli) UpdateDNSPort(ip net.IP, port int) error {
 	ctx := context.Background()
-	c.updateDNS(ctx, ip)
-	c.updateRule(ctx, port)
-	return
+	err := c.updateRule(ctx, port)
+	if err != nil {
+		return err
+	}
+	err = c.updateDNS(ctx, ip)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
-func (c *DDNSPortCli) UpdateDNSPortCache(ip net.IP, port int) {
+func (c *DDNSPortCli) UpdateDNSPortCache(ip net.IP, port int) error {
 	load := c.cacheIPPort.Load()
 	if load != nil && load.port == port && bytes.Equal(load.ip, ip) {
-		return
+		return nil
 	}
-	c.UpdateDNSPort(ip, port)
+	err := c.UpdateDNSPort(ip, port)
+	if err != nil {
+		return err
+	}
 	c.cacheIPPort.Store(&ipPort{
 		ip:   ip,
 		port: port,
 	})
+	return nil
 }
 
-func (c *DDNSPortCli) updateDNS(ctx context.Context, ip net.IP) {
+func (c *DDNSPortCli) updateDNS(ctx context.Context, ip net.IP) (err error) {
 	var recordUpdateParams dns.RecordUpdateParams
 	if ip.To4() != nil {
 		recordUpdateParams = dns.RecordUpdateParams{
@@ -95,18 +105,19 @@ func (c *DDNSPortCli) updateDNS(ctx context.Context, ip net.IP) {
 	}
 
 	for range c.cfg.Retry {
-		_, err := c.dCli.Update(
+		_, err = c.dCli.Update(
 			ctx,
 			c.cfg.Record,
 			recordUpdateParams,
 		)
 		if err == nil {
-			break
+			return nil
 		}
 	}
+	return err
 }
 
-func (c *DDNSPortCli) updateRule(ctx context.Context, port int) {
+func (c *DDNSPortCli) updateRule(ctx context.Context, port int) (err error) {
 	ruleEditParams := rulesets.RuleEditParams{
 		ZoneID: cloudflaresdk.F(c.cfg.Zone),
 		Body: rulesets.RuleEditParamsBody{
@@ -122,11 +133,12 @@ func (c *DDNSPortCli) updateRule(ctx context.Context, port int) {
 	}
 
 	for range c.cfg.Retry {
-		_, err := c.rCli.Edit(ctx, c.cfg.RulesetID, c.cfg.RuleID, ruleEditParams)
+		_, err = c.rCli.Edit(ctx, c.cfg.RulesetID, c.cfg.RuleID, ruleEditParams)
 		if err == nil {
-			break
+			return nil
 		}
 	}
+	return err
 }
 
 type routeRuleActionParameters struct {
