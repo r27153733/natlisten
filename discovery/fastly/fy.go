@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -37,6 +38,9 @@ func GetCli(cfg Config) (IPPortCli, error) {
 	client, err := fastlysdk.NewClient(cfg.APIKey)
 	if err != nil {
 		return IPPortCli{}, err
+	}
+	client.HTTPClient = &http.Client{
+		Timeout: cfg.Timeout,
 	}
 
 	return IPPortCli{
