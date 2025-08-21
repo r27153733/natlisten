@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/cloudflare/cloudflare-go/v5 v5.1.0
-	github.com/r27153733/natlisten/natnet v0.0.0-20250821164209-45bac2bf5da3
+	github.com/r27153733/natlisten/natnet v0.0.0-20250821180559-c46bfb0365f6
 )
 
 require (
