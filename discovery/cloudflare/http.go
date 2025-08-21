@@ -1,7 +1,7 @@
 package cloudflare
 
 import (
-	"github.com/r27153733/natlisten/nathttp"
+	"github.com/r27153733/natlisten/natnet/nathttp"
 	"net/http"
 )
 
