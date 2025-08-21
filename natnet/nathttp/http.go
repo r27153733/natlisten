@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int)) error {
+func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int) error) error {
 	addr := s.Addr
 	if addr == "" {
 		addr = ":http"
@@ -39,7 +39,7 @@ func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int))
 	return s.Serve(ln)
 }
 
-func ReuseListenAndServeTLSIPV4PubNat(s *http.Server, certFile, keyFile string, fn func(ip net.IP, port int)) error {
+func ReuseListenAndServeTLSIPV4PubNat(s *http.Server, certFile, keyFile string, fn func(ip net.IP, port int) error) error {
 	addr := s.Addr
 	if addr == "" {
 		addr = ":https"

@@ -55,7 +55,7 @@ func initSTUNProbeConf(c *STUNProbeConf) {
 	}
 }
 
-func StartSTUNProbe(ctx context.Context, conf STUNProbeConf, fn func(ip net.IP, port int)) error {
+func StartSTUNProbe(ctx context.Context, conf STUNProbeConf, fn func(ip net.IP, port int) error) error {
 	initSTUNProbeConf(&conf)
 	t := time.NewTicker(conf.ProbeSleep)
 	defer t.Stop()
@@ -71,7 +71,7 @@ func StartSTUNProbe(ctx context.Context, conf STUNProbeConf, fn func(ip net.IP, 
 	}
 }
 
-func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, serverIdx uint, fn func(ip net.IP, port int)) error {
+func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, serverIdx uint, fn func(ip net.IP, port int) error) error {
 	conn, err := getSTUNConn(ctx, conf, serverIdx)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, ser
 
 			cnt.Store(0)
 			println(xorAddr.String())
-			fn(xorAddr.IP, xorAddr.Port)
+			_ = fn(xorAddr.IP, xorAddr.Port)
 		})
 		if err != nil {
 			cnt.Add(1)

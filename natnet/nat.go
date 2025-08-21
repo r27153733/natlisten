@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func IPV4PubNat(ctx context.Context, localAddr *net.TCPAddr, fn func(ip net.IP, port int)) error {
+func IPV4PubNat(ctx context.Context, localAddr *net.TCPAddr, fn func(ip net.IP, port int) error) error {
 	ipv4LocalAddr := &net.TCPAddr{
 		IP:   localAddr.IP.To4(),
 		Port: localAddr.Port,
