@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-func (c *DDNSPortCli) HttpReuseListenAndServeIPV4DDNSPort(s *http.Server) error {
-	return nathttp.ReuseListenAndServeIPV4PubNat(s, c.UpdateDNSPortCache)
+func (c *IPPortCli) HttpReuseListenAndServeIPV4DDNSPort(s *http.Server) error {
+	return nathttp.ReuseListenAndServeIPV4PubNat(s, c.UpdateIPPortCache)
 }
 
-func (c *DDNSPortCli) HttpReuseListenAndServeTLSIPV4DDNSPort(s *http.Server, certFile, keyFile string) error {
-	return nathttp.ReuseListenAndServeTLSIPV4PubNat(s, certFile, keyFile, c.UpdateDNSPortCache)
+func (c *IPPortCli) HttpReuseListenAndServeTLSIPV4DDNSPort(s *http.Server, certFile, keyFile string) error {
+	return nathttp.ReuseListenAndServeTLSIPV4PubNat(s, certFile, keyFile, c.UpdateIPPortCache)
 }

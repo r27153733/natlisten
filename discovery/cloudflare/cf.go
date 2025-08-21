@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net"
+	"sync/atomic"
+	"time"
+
 	cloudflaresdk "github.com/cloudflare/cloudflare-go/v5"
 	"github.com/cloudflare/cloudflare-go/v5/dns"
 	"github.com/cloudflare/cloudflare-go/v5/option"
 	"github.com/cloudflare/cloudflare-go/v5/rulesets"
-	"net"
-	"sync/atomic"
-	"time"
 )
 
 type Config struct {
@@ -24,7 +25,7 @@ type Config struct {
 	Domain    string        `json:"domain"`     // 目标域名
 }
 
-type DDNSPortCli struct {
+type IPPortCli struct {
 	dCli        dns.RecordService
 	rCli        rulesets.RuleService
 	cfg         Config
@@ -32,7 +33,7 @@ type DDNSPortCli struct {
 	cacheIPPort atomic.Pointer[ipPort]
 }
 
-func GetCli(cfg Config) DDNSPortCli {
+func GetCli(cfg Config) IPPortCli {
 	opt := []option.RequestOption{
 		option.WithAPIToken(cfg.APIKey),
 		option.WithEnvironmentProduction(),
@@ -41,7 +42,7 @@ func GetCli(cfg Config) DDNSPortCli {
 	if cfg.Retry == 0 {
 		cfg.Retry = 10
 	}
-	return DDNSPortCli{
+	return IPPortCli{
 		dCli:       dns.RecordService{Options: opt},
 		rCli:       rulesets.RuleService{Options: opt},
 		cfg:        cfg,
@@ -49,7 +50,7 @@ func GetCli(cfg Config) DDNSPortCli {
 	}
 }
 
-func (c *DDNSPortCli) UpdateDNSPort(ip net.IP, port int) error {
+func (c *IPPortCli) UpdateIPPort(ip net.IP, port int) error {
 	ctx := context.Background()
 	err := c.updateRule(ctx, port)
 	if err != nil {
@@ -62,12 +63,12 @@ func (c *DDNSPortCli) UpdateDNSPort(ip net.IP, port int) error {
 	return err
 }
 
-func (c *DDNSPortCli) UpdateDNSPortCache(ip net.IP, port int) error {
+func (c *IPPortCli) UpdateIPPortCache(ip net.IP, port int) error {
 	load := c.cacheIPPort.Load()
 	if load != nil && load.port == port && bytes.Equal(load.ip, ip) {
 		return nil
 	}
-	err := c.UpdateDNSPort(ip, port)
+	err := c.UpdateIPPort(ip, port)
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,7 @@ func (c *DDNSPortCli) UpdateDNSPortCache(ip net.IP, port int) error {
 	return nil
 }
 
-func (c *DDNSPortCli) updateDNS(ctx context.Context, ip net.IP) (err error) {
+func (c *IPPortCli) updateDNS(ctx context.Context, ip net.IP) (err error) {
 	var recordUpdateParams dns.RecordUpdateParams
 	if ip.To4() != nil {
 		recordUpdateParams = dns.RecordUpdateParams{
@@ -103,8 +104,8 @@ func (c *DDNSPortCli) updateDNS(ctx context.Context, ip net.IP) (err error) {
 			},
 		}
 	}
-
-	for range c.cfg.Retry {
+	i := c.cfg.Retry + 1
+	for range i {
 		_, err = c.dCli.Update(
 			ctx,
 			c.cfg.Record,
@@ -117,7 +118,7 @@ func (c *DDNSPortCli) updateDNS(ctx context.Context, ip net.IP) (err error) {
 	return err
 }
 
-func (c *DDNSPortCli) updateRule(ctx context.Context, port int) (err error) {
+func (c *IPPortCli) updateRule(ctx context.Context, port int) (err error) {
 	ruleEditParams := rulesets.RuleEditParams{
 		ZoneID: cloudflaresdk.F(c.cfg.Zone),
 		Body: rulesets.RuleEditParamsBody{
