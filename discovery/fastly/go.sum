@@ -37,6 +37,10 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/r27153733/natlisten/natnet v0.0.0-20250821180559-c46bfb0365f6 h1:+4SnJAFVMmWxx4eYxI+fTJ3mmjrXcQ++JMKpkOlkTrs=
 github.com/r27153733/natlisten/natnet v0.0.0-20250821180559-c46bfb0365f6/go.mod h1:DfDX9JvbSOgt0lfiwjHAB/EG8bHkf8XSt6N66QFqZ0I=
+github.com/r27153733/natlisten/natnet v0.0.0-20250821181156-0d7a763d9499 h1:V+nIpGKDk1hU5Q5WBN1Gx/tqhEFaH5ew7x1AQhx8iAI=
+github.com/r27153733/natlisten/natnet v0.0.0-20250821181156-0d7a763d9499/go.mod h1:DfDX9JvbSOgt0lfiwjHAB/EG8bHkf8XSt6N66QFqZ0I=
+github.com/r27153733/natlisten/natnet v0.0.0-20250825163710-d1a267b78988 h1:umCbIJ3HeuV+AB3fIxb6qJgQVCPJXcmj65DF1TO7RTs=
+github.com/r27153733/natlisten/natnet v0.0.0-20250825163710-d1a267b78988/go.mod h1:DfDX9JvbSOgt0lfiwjHAB/EG8bHkf8XSt6N66QFqZ0I=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
