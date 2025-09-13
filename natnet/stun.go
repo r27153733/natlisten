@@ -3,10 +3,11 @@ package natnet
 import (
 	"context"
 	"errors"
-	"github.com/pion/stun"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/pion/stun"
 )
 
 type STUNProbeConf struct {

@@ -2,9 +2,10 @@ package natnet
 
 import (
 	"context"
-	"golang.org/x/sys/unix"
 	"net"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 func dialWithReuse(ctx context.Context, localAddr net.Addr, network, remote string) (net.Conn, error) {

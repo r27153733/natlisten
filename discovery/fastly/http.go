@@ -2,8 +2,9 @@ package fastly
 
 import (
 	"crypto/tls"
-	"github.com/r27153733/natlisten/natnet/nathttp"
 	"net/http"
+
+	"github.com/r27153733/natlisten/natnet/nathttp"
 )
 
 func (c *IPPortCli) HttpReuseListenAndServeIPV4DDNSPort(s *http.Server) error {
