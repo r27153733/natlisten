@@ -4,13 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/r27153733/natlisten/natnet"
 	"net"
 	"net/http"
 	"syscall"
+
+	"github.com/r27153733/natlisten/natnet"
 )
 
-func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int) error) error {
+func ReuseListenAndServeIPV4PubNat(ctx context.Context, s *http.Server, fn func(ip net.IP, port int) error) error {
 	addr := s.Addr
 	if addr == "" {
 		addr = ":http"
@@ -32,7 +33,7 @@ func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int) 
 	if !ok {
 		return errors.New("could not convert to net.TCPAddr")
 	}
-	err = natnet.IPV4PubNat(context.Background(), localAddr, fn)
+	err = natnet.IPV4PubNat(ctx, localAddr, fn)
 	if err != nil {
 		return err
 	}
@@ -40,7 +41,7 @@ func ReuseListenAndServeIPV4PubNat(s *http.Server, fn func(ip net.IP, port int) 
 	return s.Serve(ln)
 }
 
-func ReuseListenAndServeTLSIPV4PubNat(s *http.Server, certFile, keyFile string, fn func(ip net.IP, port int) error) error {
+func ReuseListenAndServeTLSIPV4PubNat(ctx context.Context, s *http.Server, certFile, keyFile string, fn func(ip net.IP, port int) error) error {
 	addr := s.Addr
 	if addr == "" {
 		addr = ":https"
@@ -66,7 +67,7 @@ func ReuseListenAndServeTLSIPV4PubNat(s *http.Server, certFile, keyFile string, 
 	if !ok {
 		return errors.New("could not convert to net.TCPAddr")
 	}
-	err = natnet.IPV4PubNat(context.Background(), localAddr, fn)
+	err = natnet.IPV4PubNat(ctx, localAddr, fn)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func ReuseListenAndServeTLSIPV4PubNat(s *http.Server, certFile, keyFile string, 
 	return s.ServeTLS(ln, certFile, keyFile)
 }
 
-func ReuseListenAndServeTLSConfigIPV4PubNat(s *http.Server, config *tls.Config, fn func(ip net.IP, port int) error) error {
+func ReuseListenAndServeTLSConfigIPV4PubNat(ctx context.Context, s *http.Server, config *tls.Config, fn func(ip net.IP, port int) error) error {
 	addr := s.Addr
 	if addr == "" {
 		addr = ":https"
@@ -100,7 +101,7 @@ func ReuseListenAndServeTLSConfigIPV4PubNat(s *http.Server, config *tls.Config, 
 	if !ok {
 		return errors.New("could not convert to net.TCPAddr")
 	}
-	err = natnet.IPV4PubNat(context.Background(), localAddr, fn)
+	err = natnet.IPV4PubNat(ctx, localAddr, fn)
 	if err != nil {
 		return err
 	}
