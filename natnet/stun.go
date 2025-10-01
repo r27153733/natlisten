@@ -3,11 +3,13 @@ package natnet
 import (
 	"context"
 	"errors"
+	"math/rand/v2"
 	"net"
 	"sync/atomic"
 	"time"
 
 	"github.com/pion/stun"
+	"github.com/r27153733/natlisten/natnet/internal/metricset"
 )
 
 type STUNProbeConf struct {
@@ -57,17 +59,22 @@ func initSTUNProbeConf(c *STUNProbeConf) {
 }
 
 func StartSTUNProbe(ctx context.Context, conf STUNProbeConf, fn func(ip net.IP, port int) error) error {
+	metricset.StunProbeGoroutine.Inc()
+
 	initSTUNProbeConf(&conf)
 	t := time.NewTicker(conf.ProbeSleep)
 	defer t.Stop()
 	var serverIdx uint
+	serverIdx = rand.Uint()
 	for {
 		select {
 		case <-ctx.Done():
+			metricset.StunProbeGoroutine.Dec()
 			return ctx.Err()
 		default:
 			_ = startSTUNProbe(ctx, conf, t, serverIdx, fn)
 			serverIdx++
+			metricset.StunProbeSwitch.Inc()
 		}
 	}
 }
@@ -75,14 +82,21 @@ func StartSTUNProbe(ctx context.Context, conf STUNProbeConf, fn func(ip net.IP, 
 func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, serverIdx uint, fn func(ip net.IP, port int) error) error {
 	conn, err := getSTUNConn(ctx, conf, serverIdx)
 	if err != nil {
+		metricset.StunProbeConnErr.Inc()
 		return err
 	}
 
 	c, err := stun.NewClient(conn)
 	if err != nil {
-		panic(err)
+		metricset.StunProbeConnErr.Inc()
+		return err
 	}
-	defer c.Close()
+	defer func(cc *stun.Client) {
+		err := cc.Close()
+		if err != nil {
+			metricset.StunProbeConnErr.Inc()
+		}
+	}(c)
 
 	var cnt atomic.Uint32
 	cnt.Store(conf.IgnoreErrCnt - 1)
@@ -91,6 +105,7 @@ func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, ser
 		err = c.Start(message, func(res stun.Event) {
 			if res.Error != nil {
 				cnt.Add(1)
+				metricset.StunProbeSTUNErr.Inc()
 				return
 			}
 
@@ -98,19 +113,24 @@ func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, ser
 			err := xorAddr.GetFrom(res.Message)
 			if err != nil {
 				cnt.Add(1)
+				metricset.StunProbeSTUNErr.Inc()
 				return
 			}
-
 			cnt.Store(0)
-			println(xorAddr.String())
-			_ = fn(xorAddr.IP, xorAddr.Port)
+
+			fnErr := fn(xorAddr.IP, xorAddr.Port)
+			metricset.StunProbeCallbackLastTime.Set(float64(time.Now().Unix()))
+			if fnErr != nil {
+				metricset.StunProbeCallbackErr.Inc()
+			}
 		})
 		if err != nil {
 			cnt.Add(1)
+			metricset.StunProbeSTUNErr.Inc()
 		}
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case <-t.C:
 		}
 	}
@@ -121,7 +141,7 @@ func startSTUNProbe(ctx context.Context, conf STUNProbeConf, t *time.Ticker, ser
 func getSTUNConn(ctx context.Context, conf STUNProbeConf, serverIdx uint) (net.Conn, error) {
 	dCtx, dCancelFunc := context.WithDeadline(ctx, time.Now().Add(conf.Timeout))
 	defer dCancelFunc()
-	conn, err := dialWithReuse(dCtx, conf.LocalAddr, conf.Network, conf.STUNAddrPort[serverIdx%uint(len(conf.STUNAddrPort))])
+	conn, err := DialWithReuse(dCtx, conf.LocalAddr, conf.Network, conf.STUNAddrPort[serverIdx%uint(len(conf.STUNAddrPort))])
 	if err != nil {
 		return nil, err
 	}

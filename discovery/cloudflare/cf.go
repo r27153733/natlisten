@@ -46,7 +46,7 @@ func GetCli(cfg Config) IPPortCli {
 		dCli:       dns.RecordService{Options: opt},
 		rCli:       rulesets.RuleService{Options: opt},
 		cfg:        cfg,
-		expression: fmt.Sprintf(`(http.host eq "%s")`, cfg.Domain),
+		expression: fmt.Sprintf(`(http.host wildcard "%s")`, cfg.Domain),
 	}
 }
 

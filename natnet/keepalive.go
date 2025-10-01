@@ -2,10 +2,13 @@ package natnet
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/r27153733/natlisten/natnet/internal/metricset"
 )
 
 type KeepAliveConf struct {
@@ -46,6 +49,8 @@ func initKeepAliveConf(c *KeepAliveConf) {
 }
 
 func StartHttpKeepAlive(ctx context.Context, conf KeepAliveConf) error {
+	metricset.KeepaliveGoroutine.Inc()
+
 	buf := make([]byte, 0, 96)
 	initKeepAliveConf(&conf)
 	t := time.NewTicker(conf.HttpKeepAliveSleep)
@@ -54,10 +59,12 @@ func StartHttpKeepAlive(ctx context.Context, conf KeepAliveConf) error {
 	for {
 		select {
 		case <-ctx.Done():
+			metricset.KeepaliveGoroutine.Dec()
 			return ctx.Err()
 		default:
 			_ = startHttpKeepAlive(ctx, conf, t, serverIdx, buf)
 			serverIdx++
+			metricset.KeepaliveSwitch.Inc()
 		}
 	}
 }
@@ -65,8 +72,16 @@ func StartHttpKeepAlive(ctx context.Context, conf KeepAliveConf) error {
 func startHttpKeepAlive(ctx context.Context, conf KeepAliveConf, t *time.Ticker, serverIdx uint, buf []byte) error {
 	conn, err := getKeepAliveConn(ctx, conf, serverIdx)
 	if err != nil {
+		metricset.KeepaliveConnErr.Inc()
 		return err
 	}
+	defer func(cc net.Conn) {
+		err := cc.Close()
+		if err != nil {
+			metricset.KeepaliveConnErr.Inc()
+		}
+	}(conn)
+
 	buf = append(buf[:0], "HEAD / HTTP/1.1\r\nHost: "...)
 	buf = append(buf, conf.HTTPAddrPort[serverIdx%uint(len(conf.HTTPAddrPort))]...)
 	buf = append(buf, "\r\nConnection: keep-alive\r\n\r\n"...)
@@ -74,35 +89,53 @@ func startHttpKeepAlive(ctx context.Context, conf KeepAliveConf, t *time.Ticker,
 	var cnt atomic.Uint32
 	cnt.Store(conf.IgnoreErrCnt - 1)
 
-	done := ctx.Done()
+	err = conn.SetReadDeadline(time.Time{})
+	if err != nil {
+		metricset.KeepaliveConnErr.Inc()
+	}
+
 	go func() {
+		b := make([]byte, 1024)
 		for cnt.Load() <= conf.IgnoreErrCnt {
-			_, _ = io.Copy(io.Discard, conn)
+			n, err := conn.Read(b)
+			metricset.KeepaliveReadLastTime.Set(float64(time.Now().Unix()))
+			if err != nil && err != io.EOF {
+				if errOp := (&net.OpError{}); errors.As(err, &errOp) {
+					// This means we just closed the connection and it's OK
+					if errOp.Err.Error() == "use of closed network connection" {
+						return
+					}
+				}
+				metricset.KeepaliveReadErr.Inc()
+			}
+			metricset.KeepaliveReadBytes.Add(n)
+
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			default:
 			}
-			time.Sleep(conf.Timeout)
 		}
 	}()
 
 	for cnt.Load() <= conf.IgnoreErrCnt {
-		println("KeepAlive", err, cnt.Load())
-		err = conn.SetDeadline(time.Now().Add(conf.Timeout))
+		err = conn.SetWriteDeadline(time.Now().Add(conf.Timeout))
 		if err != nil {
 			cnt.Add(1)
+			metricset.KeepaliveWriteErr.Inc()
 		} else {
-			_, err = conn.Write(buf)
+			n, err := conn.Write(buf)
+			metricset.KeepaliveWriteLastTime.Set(float64(time.Now().Unix()))
 			if err != nil {
 				cnt.Add(1)
 			} else {
 				cnt.Store(0)
 			}
+			metricset.KeepaliveWriteBytes.Add(n)
 		}
 
 		select {
-		case <-done:
+		case <-ctx.Done():
 			return ctx.Err()
 		case <-t.C:
 		}

@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func dialWithReuse(ctx context.Context, localAddr net.Addr, network, remote string) (net.Conn, error) {
+func DialWithReuse(ctx context.Context, localAddr net.Addr, network, remote string) (net.Conn, error) {
 	d := net.Dialer{
 		LocalAddr:      localAddr,
 		ControlContext: controlReuse,
